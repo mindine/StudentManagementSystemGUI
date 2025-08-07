@@ -27,10 +27,27 @@ public class Student {
     }
 
     /**
-     * Generates a new student ID.
+     * Generates a new student ID based on a static counter.
+     * Format: "S1001", "S1002", ...
      */
     private String generateStudentId() {
         return "S" + (++idCounter);
+    }
+
+    /**
+     * Syncs the static ID counter with the maximum ID found in persisted students.
+     * Helps prevent duplicate IDs after CSV reload.
+     */
+    public static void syncIdCounter(Collection<Student> students) {
+        for (Student s : students) {
+            try {
+                int idNum = Integer.parseInt(s.getStudentId().substring(1));
+                if (idNum > idCounter) {
+                    idCounter = idNum;
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
     }
 
     // --- Getters and Setters ---
@@ -40,7 +57,7 @@ public class Student {
     }
 
     /**
-     * Allows setting student ID manually (e.g., during data loading from CSV).
+     * Allows restoring original student ID during data loading from CSV.
      */
     public void setStudentId(String studentId) {
         this.studentId = studentId;
@@ -68,5 +85,34 @@ public class Student {
 
     public Map<Course, Double> getStudentCourseGrades() {
         return studentCourseGrades;
+    }
+
+    // --- Optional: Helpful Overrides for Set/Map usage ---
+
+    /**
+     * Defines equality based on student ID.
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof Student)) return false;
+        Student other = (Student) obj;
+        return studentId.equals(other.studentId);
+    }
+
+    /**
+     * Hashcode based on student ID.
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hash(studentId);
+    }
+
+    /**
+     * Custom string representation for debugging.
+     */
+    @Override
+    public String toString() {
+        return studentId + " - " + studentName;
     }
 }

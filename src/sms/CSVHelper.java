@@ -14,12 +14,22 @@ public class CSVHelper {
     private static final String GRADE_FILE = "data/grades.csv";
 
     /**
+     * Escapes any commas in the value to preserve CSV structure.
+     */
+    private static String escape(String value) {
+        return value.contains(",") ? "\"" + value + "\"" : value;
+    }
+
+    /**
      * Saves all student records to CSV.
      */
     public static void saveStudents(Map<String, Student> students) throws IOException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(STUDENT_FILE))) {
             for (Student s : students.values()) {
-                writer.println(s.getStudentId() + "," + s.getStudentName() + "," + s.getStudentEmail());
+                writer.println(String.join(",",
+                        escape(s.getStudentId()),
+                        escape(s.getStudentName()),
+                        escape(s.getStudentEmail())));
             }
         }
     }
@@ -30,7 +40,11 @@ public class CSVHelper {
     public static void saveCourses(Map<String, Course> courses) throws IOException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(COURSE_FILE))) {
             for (Course c : courses.values()) {
-                writer.println(c.getCourseCode() + "," + c.getCourseName() + "," + c.getMaxCapacity() + "," + c.getCurrentEnrollment());
+                writer.println(String.join(",",
+                        escape(c.getCourseCode()),
+                        escape(c.getCourseName()),
+                        String.valueOf(c.getMaxCapacity()),
+                        String.valueOf(c.getCurrentEnrollment())));
             }
         }
     }
@@ -42,7 +56,9 @@ public class CSVHelper {
         try (PrintWriter writer = new PrintWriter(new FileWriter(ENROLLMENT_FILE))) {
             for (Student s : students.values()) {
                 for (Course c : s.getEnrolledCourses()) {
-                    writer.println(s.getStudentId() + "," + c.getCourseCode());
+                    writer.println(String.join(",",
+                            escape(s.getStudentId()),
+                            escape(c.getCourseCode())));
                 }
             }
         }
@@ -55,7 +71,10 @@ public class CSVHelper {
         try (PrintWriter writer = new PrintWriter(new FileWriter(GRADE_FILE))) {
             for (Student s : students.values()) {
                 for (Map.Entry<Course, Double> entry : s.getStudentCourseGrades().entrySet()) {
-                    writer.println(s.getStudentId() + "," + entry.getKey().getCourseCode() + "," + entry.getValue());
+                    writer.println(String.join(",",
+                            escape(s.getStudentId()),
+                            escape(entry.getKey().getCourseCode()),
+                            entry.getValue().toString()));
                 }
             }
         }
@@ -66,47 +85,59 @@ public class CSVHelper {
      */
     public static void loadAllData(Map<String, Student> students, Map<String, Course> courses) throws Exception {
         // Load Courses
-        try (Scanner scanner = new Scanner(new File(COURSE_FILE))) {
-            while (scanner.hasNextLine()) {
-                String[] parts = scanner.nextLine().split(",");
-                Course course = new Course(parts[0], parts[1], Integer.parseInt(parts[2]));
-                for (int i = 0; i < Integer.parseInt(parts[3]); i++) {
-                    course.incrementEnrollment();  // Maintain enrollment count
+        File courseFile = new File(COURSE_FILE);
+        if (courseFile.exists()) {
+            try (Scanner scanner = new Scanner(courseFile)) {
+                while (scanner.hasNextLine()) {
+                    String[] parts = scanner.nextLine().split(",");
+                    Course course = new Course(parts[0], parts[1], Integer.parseInt(parts[2]));
+                    for (int i = 0; i < Integer.parseInt(parts[3]); i++) {
+                        course.incrementEnrollment();
+                    }
+                    courses.put(course.getCourseCode(), course);
                 }
-                courses.put(course.getCourseCode(), course);
             }
         }
 
         // Load Students
-        try (Scanner scanner = new Scanner(new File(STUDENT_FILE))) {
-            while (scanner.hasNextLine()) {
-                String[] parts = scanner.nextLine().split(",");
-                Student student = new Student(parts[1], parts[2]); // name, email
-                student.setStudentId(parts[0]); // restore ID
-                students.put(student.getStudentId(), student);
+        File studentFile = new File(STUDENT_FILE);
+        if (studentFile.exists()) {
+            try (Scanner scanner = new Scanner(studentFile)) {
+                while (scanner.hasNextLine()) {
+                    String[] parts = scanner.nextLine().split(",");
+                    Student student = new Student(parts[1], parts[2]);
+                    student.setStudentId(parts[0]);
+                    students.put(student.getStudentId(), student);
+                }
             }
         }
 
         // Load Enrollments
-        try (Scanner scanner = new Scanner(new File(ENROLLMENT_FILE))) {
-            while (scanner.hasNextLine()) {
-                String[] parts = scanner.nextLine().split(",");
-                Student s = students.get(parts[0]);
-                Course c = courses.get(parts[1]);
-                if (s != null && c != null) {
-                    s.getEnrolledCourses().add(c);
+        File enrollmentFile = new File(ENROLLMENT_FILE);
+        if (enrollmentFile.exists()) {
+            try (Scanner scanner = new Scanner(enrollmentFile)) {
+                while (scanner.hasNextLine()) {
+                    String[] parts = scanner.nextLine().split(",");
+                    Student s = students.get(parts[0]);
+                    Course c = courses.get(parts[1]);
+                    if (s != null && c != null) {
+                        s.getEnrolledCourses().add(c);
+                    }
                 }
             }
         }
 
         // Load Grades
-        try (Scanner scanner = new Scanner(new File(GRADE_FILE))) {
-            while (scanner.hasNextLine()) {
-                String[] parts = scanner.nextLine().split(",");
-                Student s = students.get(parts[0]);
-                Course c = courses.get(parts[1]);
-                if (s != null && c != null) {
-                    s.getStudentCourseGrades().put(c, Double.parseDouble(parts[2]));
+        File gradeFile = new File(GRADE_FILE);
+        if (gradeFile.exists()) {
+            try (Scanner scanner = new Scanner(gradeFile)) {
+                while (scanner.hasNextLine()) {
+                    String[] parts = scanner.nextLine().split(",");
+                    Student s = students.get(parts[0]);
+                    Course c = courses.get(parts[1]);
+                    if (s != null && c != null) {
+                        s.getStudentCourseGrades().put(c, Double.parseDouble(parts[2]));
+                    }
                 }
             }
         }
